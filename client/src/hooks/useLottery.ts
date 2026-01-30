@@ -88,28 +88,36 @@ export function useLottery() {
   }, []);
 
   const resetLottery = useCallback(async () => {
-    if (confirm('确定要重置所有抽奖数据吗？这将清空所有中奖记录。')) {
-      await db.clearWinners();
-      
-      // 重置参与者状态
-      const updatedParticipants = participants.map(p => ({ ...p, isWinner: false }));
-      await db.clearParticipants();
-      for (const p of updatedParticipants) {
-        await db.addParticipant(p);
-      }
-      
-      // 重置奖品剩余数量
-      const updatedPrizes = prizes.map(p => ({ ...p, remaining: p.count }));
-      await db.clearPrizes();
-      for (const p of updatedPrizes) {
-        await db.addPrize(p);
-      }
-
-      setWinners([]);
-      setParticipants(updatedParticipants);
-      setPrizes(updatedPrizes);
+    await db.clearWinners();
+    
+    // 重置参与者状态
+    const updatedParticipants = participants.map(p => ({ ...p, isWinner: false }));
+    await db.clearParticipants();
+    for (const p of updatedParticipants) {
+      await db.addParticipant(p);
     }
+    
+    // 重置奖品剩余数量
+    const updatedPrizes = prizes.map(p => ({ ...p, remaining: p.count }));
+    await db.clearPrizes();
+    for (const p of updatedPrizes) {
+      await db.addPrize(p);
+    }
+
+    setWinners([]);
+    setParticipants(updatedParticipants);
+    setPrizes(updatedPrizes);
   }, [participants, prizes]);
+
+  const clearAllData = useCallback(async () => {
+    await db.clearWinners();
+    await db.clearParticipants();
+    await db.clearPrizes();
+    
+    setWinners([]);
+    setParticipants([]);
+    setPrizes([]);
+  }, []);
 
   const draw = useCallback(async (prizeId: string, count: number = 1) => {
     const prize = prizes.find(p => p.id === prizeId);
@@ -182,6 +190,7 @@ export function useLottery() {
     addPrize,
     deletePrize,
     resetLottery,
+    clearAllData,
     draw
   };
 }

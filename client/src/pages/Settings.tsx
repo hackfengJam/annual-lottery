@@ -4,9 +4,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { useLottery } from "@/hooks/useLottery";
 import { toast } from "sonner";
-import { Upload, Trash2, Save, RefreshCw } from "lucide-react";
+import { Upload, Trash2, Save, RefreshCw, AlertTriangle } from "lucide-react";
 import { parseCSV } from "@/lib/utils";
 import PrizeManager from "@/components/PrizeManager";
 
@@ -15,10 +16,24 @@ export default function Settings() {
     participants, 
     importParticipants, 
     importPrizes, 
-    resetLottery 
+    resetLottery,
+    clearAllData
   } = useLottery();
 
   const [participantInput, setParticipantInput] = useState('');
+  const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
+
+  const handleResetLottery = async () => {
+    await resetLottery();
+    setIsResetDialogOpen(false);
+    toast.success('已重置抽奖状态，名单和奖品保留');
+  };
+
+  const handleClearAll = async () => {
+    await clearAllData();
+    setIsResetDialogOpen(false);
+    toast.success('已清空所有数据');
+  };
   const [prizeInput, setPrizeInput] = useState('');
 
   const handleParticipantUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -116,9 +131,50 @@ export default function Settings() {
     <div className="container py-8 space-y-8">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-display text-primary neon-text-pink">系统设置</h1>
-        <Button variant="destructive" onClick={resetLottery} className="neon-border-pink">
-          <Trash2 className="mr-2 h-4 w-4" /> 重置所有数据
-        </Button>
+        
+        <Dialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
+          <DialogTrigger asChild>
+            <Button variant="destructive" className="neon-border-pink bg-red-950/50 hover:bg-red-900/50 border-red-500/50">
+              <Trash2 className="mr-2 h-4 w-4" /> 数据重置选项
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="bg-black/95 border-red-500 text-white">
+            <DialogHeader>
+              <DialogTitle className="text-red-500 flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5" /> 危险操作警告
+              </DialogTitle>
+              <DialogDescription className="text-gray-400">
+                请选择您要执行的重置操作。此操作不可撤销。
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="grid gap-4 py-4">
+              <div className="border border-yellow-500/30 bg-yellow-950/20 p-4 rounded-lg space-y-2">
+                <h4 className="font-bold text-yellow-500">仅重置抽奖状态</h4>
+                <p className="text-sm text-gray-300">
+                  清空所有中奖记录，重置奖品剩余数量。
+                  <br />
+                  <span className="text-green-400">保留参与者名单和奖品设置。</span>
+                </p>
+                <Button onClick={handleResetLottery} className="w-full bg-yellow-600 hover:bg-yellow-700 text-white mt-2">
+                  重置抽奖状态 (重新开始)
+                </Button>
+              </div>
+
+              <div className="border border-red-500/30 bg-red-950/20 p-4 rounded-lg space-y-2">
+                <h4 className="font-bold text-red-500">清空所有数据</h4>
+                <p className="text-sm text-gray-300">
+                  彻底清空所有数据，包括中奖记录、参与者名单和奖品设置。
+                  <br />
+                  <span className="text-red-400">系统将变为空白状态。</span>
+                </p>
+                <Button onClick={handleClearAll} variant="destructive" className="w-full mt-2">
+                  清空所有数据
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="grid md:grid-cols-2 gap-8">
