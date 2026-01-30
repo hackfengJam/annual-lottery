@@ -131,55 +131,11 @@ export default function Settings() {
     <div className="container py-8 space-y-8">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-display text-primary neon-text-pink">系统设置</h1>
-        
-        <Dialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
-          <DialogTrigger asChild>
-            <Button variant="destructive" className="neon-border-pink bg-red-950/50 hover:bg-red-900/50 border-red-500/50">
-              <Trash2 className="mr-2 h-4 w-4" /> 数据重置选项
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="bg-black/95 border-red-500 text-white">
-            <DialogHeader>
-              <DialogTitle className="text-red-500 flex items-center gap-2">
-                <AlertTriangle className="h-5 w-5" /> 危险操作警告
-              </DialogTitle>
-              <DialogDescription className="text-gray-400">
-                请选择您要执行的重置操作。此操作不可撤销。
-              </DialogDescription>
-            </DialogHeader>
-            
-            <div className="grid gap-4 py-4">
-              <div className="border border-yellow-500/30 bg-yellow-950/20 p-4 rounded-lg space-y-2">
-                <h4 className="font-bold text-yellow-500">仅重置抽奖状态</h4>
-                <p className="text-sm text-gray-300">
-                  清空所有中奖记录，重置奖品剩余数量。
-                  <br />
-                  <span className="text-green-400">保留参与者名单和奖品设置。</span>
-                </p>
-                <Button onClick={handleResetLottery} className="w-full bg-yellow-600 hover:bg-yellow-700 text-white mt-2">
-                  重置抽奖状态 (重新开始)
-                </Button>
-              </div>
-
-              <div className="border border-red-500/30 bg-red-950/20 p-4 rounded-lg space-y-2">
-                <h4 className="font-bold text-red-500">清空所有数据</h4>
-                <p className="text-sm text-gray-300">
-                  彻底清空所有数据，包括中奖记录、参与者名单和奖品设置。
-                  <br />
-                  <span className="text-red-400">系统将变为空白状态。</span>
-                </p>
-                <Button onClick={handleClearAll} variant="destructive" className="w-full mt-2">
-                  清空所有数据
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
       </div>
 
       <div className="grid md:grid-cols-2 gap-8">
         {/* 参与者设置 */}
-        <Card className="glass-panel neon-border-blue">
+        <Card className="glass-panel neon-border-blue h-fit">
           <CardHeader>
             <CardTitle className="text-secondary neon-text-blue">参与者管理 ({participants.length}人)</CardTitle>
           </CardHeader>
@@ -208,7 +164,7 @@ export default function Settings() {
         </Card>
 
         {/* 奖品设置 */}
-        <Card className="bg-black/40 border-pink-500/30 neon-border-pink">
+        <Card className="bg-black/40 border-pink-500/30 neon-border-pink h-fit">
           <CardHeader>
             <CardTitle className="text-2xl font-display text-pink-400">奖品设置</CardTitle>
           </CardHeader>
@@ -244,6 +200,69 @@ export default function Settings() {
           </CardContent>
         </Card>
       </div>
+
+      {/* 系统维护区域 */}
+      <Card className="border-red-500/50 bg-red-950/10 neon-border-pink mt-8">
+        <CardHeader>
+          <CardTitle className="text-red-400 flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5" /> 系统维护与重置
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between p-4 border border-red-500/20 rounded-lg bg-red-950/20">
+            <div>
+              <h4 className="font-bold text-red-300 mb-1">重置数据</h4>
+              <p className="text-sm text-gray-400">
+                如果您需要重新开始抽奖，或者清空所有数据进行新的活动，请点击右侧按钮。
+              </p>
+            </div>
+            
+            <Dialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="destructive" size="lg" className="neon-border-pink bg-red-600 hover:bg-red-700 text-white font-bold px-8">
+                  <Trash2 className="mr-2 h-5 w-5" /> 打开重置选项
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="bg-black/95 border-red-500 text-white">
+                <DialogHeader>
+                  <DialogTitle className="text-red-500 flex items-center gap-2">
+                    <AlertTriangle className="h-5 w-5" /> 危险操作警告
+                  </DialogTitle>
+                  <DialogDescription className="text-gray-400">
+                    请选择您要执行的重置操作。此操作不可撤销。
+                  </DialogDescription>
+                </DialogHeader>
+                
+                <div className="grid gap-4 py-4">
+                  <div className="border border-yellow-500/30 bg-yellow-950/20 p-4 rounded-lg space-y-2">
+                    <h4 className="font-bold text-yellow-500">仅重置抽奖状态</h4>
+                    <p className="text-sm text-gray-300">
+                      清空所有中奖记录，重置奖品剩余数量。
+                      <br />
+                      <span className="text-green-400">保留参与者名单和奖品设置。</span>
+                    </p>
+                    <Button onClick={handleResetLottery} className="w-full bg-yellow-600 hover:bg-yellow-700 text-white mt-2">
+                      重置抽奖状态 (重新开始)
+                    </Button>
+                  </div>
+
+                  <div className="border border-red-500/30 bg-red-950/20 p-4 rounded-lg space-y-2">
+                    <h4 className="font-bold text-red-500">清空所有数据</h4>
+                    <p className="text-sm text-gray-300">
+                      彻底清空所有数据，包括中奖记录、参与者名单和奖品设置。
+                      <br />
+                      <span className="text-red-400">系统将变为空白状态。</span>
+                    </p>
+                    <Button onClick={handleClearAll} variant="destructive" className="w-full mt-2">
+                      清空所有数据
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
