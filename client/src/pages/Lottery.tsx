@@ -138,7 +138,7 @@ export default function Lottery() {
         </div>
 
         {/* 滚动/结果显示 */}
-        <div className="relative z-10 text-center space-y-8">
+        <div className="relative z-10 text-center space-y-8 w-full px-8">
           {isDrawing ? (
             <motion.div 
               className="text-8xl font-display font-bold text-white neon-text-blue tracking-widest"
@@ -163,8 +163,23 @@ export default function Lottery() {
               ))}
             </div>
           ) : (
-            <div className="text-6xl font-display text-white/50 tracking-widest">
-              等待抽奖
+            <div className="flex flex-col items-center justify-center space-y-6">
+              {selectedPrize?.image && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="relative w-64 h-64 rounded-lg overflow-hidden border-2 border-cyan-500 neon-border-blue bg-black/50"
+                >
+                  <img 
+                    src={selectedPrize.image} 
+                    alt={selectedPrize.name} 
+                    className="w-full h-full object-contain p-4"
+                  />
+                </motion.div>
+              )}
+              <div className="text-6xl font-display text-white/50 tracking-widest">
+                {selectedPrize ? '等待抽奖' : '请选择奖项'}
+              </div>
             </div>
           )}
         </div>

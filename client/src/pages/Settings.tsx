@@ -95,8 +95,14 @@ export default function Settings() {
   const handleManualPrizeImport = () => {
     const lines = prizeInput.split('\n').filter(l => l.trim());
     const data = lines.map(line => {
-      const [name, countStr] = line.split(/[,，\s]+/).map(s => s.trim());
-      return { name, count: parseInt(countStr) || 1 };
+      // 支持格式: 名称 数量 [图片链接]
+      // 使用正则匹配，因为图片链接可能包含特殊字符
+      const parts = line.trim().split(/\s+/);
+      const name = parts[0];
+      const count = parseInt(parts[1]) || 1;
+      const image = parts.length > 2 ? parts[2] : undefined;
+      
+      return { name, count, image };
     });
 
     if (data.length > 0) {
@@ -162,11 +168,12 @@ export default function Settings() {
             <div className="space-y-2">
               <Label>手动输入</Label>
               <Textarea 
-                placeholder="每行一个: 奖品名称 数量" 
+                placeholder="每行一个: 奖品名称 数量 [图片链接]" 
                 value={prizeInput}
                 onChange={e => setPrizeInput(e.target.value)}
                 className="bg-black/30 min-h-[150px]"
               />
+              <p className="text-xs text-muted-foreground">示例: iPhone 15 1 https://example.com/iphone.jpg</p>
               <Button onClick={handleManualPrizeImport} className="w-full bg-primary text-primary-foreground hover:bg-primary/80">
                 <Save className="mr-2 h-4 w-4" /> 添加奖品
               </Button>
