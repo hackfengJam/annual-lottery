@@ -2,23 +2,24 @@ import { useState, useEffect, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useLottery } from "@/hooks/useLottery";
-import { Winner } from "@/lib/types";
+import { useLotteryData } from "@/hooks/useLotteryData";
+import type { Winner } from "../../../drizzle/schema";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import confetti from 'canvas-confetti';
+import { toast } from 'sonner';
 
 export default function Lottery() {
   const { 
     participants, 
     prizes, 
     winners,
-    isDrawing, 
-    setIsDrawing, 
     draw 
-  } = useLottery();
+  } = useLotteryData();
+  
+  const [isDrawing, setIsDrawing] = useState(false);
 
-  const [selectedPrizeId, setSelectedPrizeId] = useState<string>('');
+  const [selectedPrizeId, setSelectedPrizeId] = useState<number | null>(null);
   const [drawCount, setDrawCount] = useState<string>('1');
   const [currentWinners, setCurrentWinners] = useState<Winner[]>([]);
   const [rollingName, setRollingName] = useState<string>('READY');
@@ -28,10 +29,13 @@ export default function Lottery() {
   // 自动选择第一个有剩余的奖品
   useEffect(() => {
     if (!selectedPrizeId && prizes.length > 0) {
-      const firstAvailable = prizes.find(p => p.remaining > 0);
+      const firstAvailable = prizes.find(p => p.remainingCount > 0);
       if (firstAvailable) setSelectedPrizeId(firstAvailable.id);
     }
   }, [prizes, selectedPrizeId]);
+
+  // 获取已中奖的参与者 ID 集合
+  const winnerParticipantIds = new Set(winners.map(w => w.participantId));
 
   const startRolling = () => {
     if (!selectedPrizeId) return;
@@ -39,10 +43,14 @@ export default function Lottery() {
     setIsDrawing(true);
     setCurrentWinners([]);
     
-    // 滚动动画逻辑
-    const eligibleNames = participants.filter(p => !p.isWinner).map(p => p.name);
+    // 滚动动画逻辑 - 只显示未中奖的参与者
+    const eligibleNames = participants
+      .filter(p => !winnerParticipantIds.has(p.id))
+      .map(p => p.name);
+      
     if (eligibleNames.length === 0) {
       setIsDrawing(false);
+      toast.error('没有可抽奖的参与者');
       return;
     }
 
@@ -66,29 +74,71 @@ export default function Lottery() {
     rollingIntervalRef.current = requestAnimationFrame(animate) as any;
   };
 
-  const stopRolling = () => {
+  const stopRolling = async () => {
     if (rollingIntervalRef.current) {
       cancelAnimationFrame(rollingIntervalRef.current as any);
       rollingIntervalRef.current = null;
     }
 
+    if (!selectedPrizeId) return;
+
+    const selectedPrize = prizes.find(p => p.id === selectedPrizeId);
+    if (!selectedPrize) return;
+
     const count = drawCount === 'ALL' 
-      ? (selectedPrize?.remaining || 1) 
+      ? selectedPrize.remainingCount
       : parseInt(drawCount);
       
-    draw(selectedPrizeId, count).then(winners => {
-      if (winners) {
-        setCurrentWinners(winners);
-        // 触发庆祝特效
-        confetti({
-          particleCount: 150,
-          spread: 70,
-          origin: { y: 0.6 },
-          colors: ['#FF00FF', '#00FFFF', '#BF00FF']
-        });
-      }
+    // 获取未中奖的参与者
+    const eligibleParticipants = participants.filter(p => !winnerParticipantIds.has(p.id));
+    
+    if (eligibleParticipants.length === 0) {
+      toast.error('没有可抽奖的参与者');
       setIsDrawing(false);
+      return;
+    }
+
+    const actualCount = Math.min(count, eligibleParticipants.length, selectedPrize.remainingCount);
+    
+    // 使用密码学安全的随机算法抽取中奖者
+    const shuffled = eligibleParticipants.sort(() => {
+      const array = new Uint32Array(1);
+      crypto.getRandomValues(array);
+      return array[0] / 0xFFFFFFFF - 0.5;
     });
+    
+    const selectedWinners = shuffled.slice(0, actualCount);
+    
+    // 调用 API 记录中奖
+    const newWinners: Winner[] = [];
+    for (const participant of selectedWinners) {
+      try {
+        const winner = await draw(
+          selectedPrize.id,
+          selectedPrize.name,
+          participant.id,
+          participant.name
+        );
+        newWinners.push(winner);
+      } catch (error) {
+        console.error('Failed to record winner:', error);
+        toast.error(`记录中奖者 ${participant.name} 失败`);
+      }
+    }
+    
+    if (newWinners.length > 0) {
+      setCurrentWinners(newWinners);
+      // 触发庆祝特效
+      confetti({
+        particleCount: 150,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: ['#FF00FF', '#00FFFF', '#BF00FF']
+      });
+      toast.success(`成功抽取 ${newWinners.length} 位中奖者`);
+    }
+    
+    setIsDrawing(false);
   };
 
   const toggleDraw = () => {
@@ -106,14 +156,14 @@ export default function Lottery() {
       
       {/* 奖品选择区 */}
       <div className="w-full max-w-4xl flex gap-4 z-10">
-        <Select value={selectedPrizeId} onValueChange={setSelectedPrizeId} disabled={isDrawing}>
+        <Select value={selectedPrizeId?.toString() || ''} onValueChange={(val) => setSelectedPrizeId(parseInt(val))} disabled={isDrawing}>
           <SelectTrigger className="h-16 text-2xl bg-black/50 border-2 border-cyan-500 text-cyan-400 neon-border-blue">
             <SelectValue placeholder="选择奖项" />
           </SelectTrigger>
           <SelectContent className="bg-black/90 border-cyan-500 text-cyan-400">
             {prizes.map(prize => (
-              <SelectItem key={prize.id} value={prize.id} disabled={prize.remaining === 0} className="text-xl py-3">
-                {prize.name} (剩余: {prize.remaining})
+              <SelectItem key={prize.id} value={prize.id.toString()} disabled={prize.remainingCount === 0} className="text-xl py-3">
+                {prize.name} (剩余: {prize.remainingCount})
               </SelectItem>
             ))}
           </SelectContent>
@@ -130,7 +180,7 @@ export default function Lottery() {
               </SelectItem>
             ))}
             <SelectItem value="ALL" className="text-xl py-3 text-red-400 font-bold">
-              全部抽取 ({selectedPrize?.remaining || 0})
+              全部抽取 ({selectedPrize?.remainingCount || 0})
             </SelectItem>
           </SelectContent>
         </Select>
@@ -165,21 +215,21 @@ export default function Lottery() {
                     className="bg-black/60 border border-pink-500 p-4 rounded-lg neon-border-pink flex flex-col items-center justify-center"
                   >
                     <div className="text-2xl font-bold text-pink-400 truncate w-full text-center">{winner.participantName}</div>
-                    <div className="text-sm text-cyan-300">{winner.participantId.slice(0, 4)}</div>
+                    <div className="text-sm text-cyan-300">#{winner.participantId}</div>
                   </motion.div>
                 ))}
               </div>
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center space-y-6">
-              {selectedPrize?.image && (
+              {selectedPrize?.imageUrl && (
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   className="relative w-64 h-64 rounded-lg overflow-hidden border-2 border-cyan-500 neon-border-blue bg-black/50"
                 >
                   <img 
-                    src={selectedPrize.image} 
+                    src={selectedPrize.imageUrl} 
                     alt={selectedPrize.name} 
                     className="w-full h-full object-contain p-4"
                   />
@@ -197,7 +247,7 @@ export default function Lottery() {
       <Button 
         size="lg"
         onClick={toggleDraw}
-        disabled={!selectedPrize || selectedPrize.remaining === 0}
+        disabled={!selectedPrize || selectedPrize.remainingCount === 0}
         className={cn(
           "h-24 px-24 text-4xl font-display font-bold tracking-widest transition-all duration-300 transform hover:scale-105",
           isDrawing 

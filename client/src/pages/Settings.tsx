@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { useLottery } from "@/hooks/useLottery";
+import { useLotteryData } from "@/hooks/useLotteryData";
 import { toast } from "sonner";
 import { Upload, Trash2, Save, RefreshCw, AlertTriangle } from "lucide-react";
 import { parseCSV } from "@/lib/utils";
@@ -14,11 +14,10 @@ import PrizeManager from "@/components/PrizeManager";
 export default function Settings() {
   const { 
     participants, 
-    importParticipants, 
-    importPrizes, 
+    addParticipants, 
     resetLottery,
-    clearAllData
-  } = useLottery();
+    clearAll
+  } = useLotteryData();
 
   const [participantInput, setParticipantInput] = useState('');
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
@@ -26,33 +25,28 @@ export default function Settings() {
   const handleResetLottery = async () => {
     await resetLottery();
     setIsResetDialogOpen(false);
-    toast.success('已重置抽奖状态，名单和奖品保留');
   };
 
   const handleClearAll = async () => {
-    await clearAllData();
+    await clearAll();
     setIsResetDialogOpen(false);
-    toast.success('已清空所有数据');
   };
   const [prizeInput, setPrizeInput] = useState('');
 
-  const handleParticipantUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleParticipantUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       try {
         const content = event.target?.result as string;
         const data = parseCSV(content);
         // 假设 CSV 包含 name 和 department 列
-        const validData = data.filter(d => d.name).map(d => ({
-          name: d.name,
-          department: d.department
-        }));
+        const validData = data.filter(d => d.name).map(d => d.name);
         
         if (validData.length > 0) {
-          importParticipants(validData);
+          await addParticipants(validData);
           toast.success(`成功导入 ${validData.length} 名参与者`);
         } else {
           toast.error('未找到有效数据，请检查 CSV 格式');
@@ -69,23 +63,12 @@ export default function Settings() {
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       try {
         const content = event.target?.result as string;
         const data = parseCSV(content);
-        // 假设 CSV 包含 name, count, image 列
-        const validData = data.filter(d => d.name && d.count).map(d => ({
-          name: d.name,
-          count: parseInt(d.count) || 1,
-          image: d.image
-        }));
-        
-        if (validData.length > 0) {
-          importPrizes(validData);
-          toast.success(`成功导入 ${validData.length} 个奖项`);
-        } else {
-          toast.error('未找到有效数据，请检查 CSV 格式');
-        }
+        // CSV 导入奖品功能已被 PrizeManager 取代
+        toast.info('请使用上方的奖品管理器添加奖品');
       } catch (error) {
         toast.error('文件解析失败');
       }
@@ -93,38 +76,21 @@ export default function Settings() {
     reader.readAsText(file);
   };
 
-  const handleManualParticipantImport = () => {
+  const handleManualParticipantImport = async () => {
     const lines = participantInput.split('\n').filter(l => l.trim());
-    const data = lines.map(line => {
-      const [name, department] = line.split(/[,，\s]+/).map(s => s.trim());
-      return { name, department };
-    });
+    const names = lines.map(line => line.split(/[,，\s]+/)[0].trim()).filter(n => n);
 
-    if (data.length > 0) {
-      importParticipants(data);
+    if (names.length > 0) {
+      await addParticipants(names);
       setParticipantInput('');
-      toast.success(`成功添加 ${data.length} 名参与者`);
+      toast.success(`成功添加 ${names.length} 名参与者`);
     }
   };
 
   const handleManualPrizeImport = () => {
-    const lines = prizeInput.split('\n').filter(l => l.trim());
-    const data = lines.map(line => {
-      // 支持格式: 名称 数量 [图片链接]
-      // 使用正则匹配，因为图片链接可能包含特殊字符
-      const parts = line.trim().split(/\s+/);
-      const name = parts[0];
-      const count = parseInt(parts[1]) || 1;
-      const image = parts.length > 2 ? parts[2] : undefined;
-      
-      return { name, count, image };
-    });
-
-    if (data.length > 0) {
-      importPrizes(data);
-      setPrizeInput('');
-      toast.success(`成功添加 ${data.length} 个奖项`);
-    }
+    // 文本批量导入已经被 PrizeManager 组件取代
+    // 保留此函数以防止报错，但实际上不再使用
+    toast.info('请使用上方的奖品管理器添加奖品');
   };
 
   return (

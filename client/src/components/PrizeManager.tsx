@@ -4,12 +4,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Card, CardContent } from "@/components/ui/card";
-import { useLottery } from "@/hooks/useLottery";
+import { useLotteryData } from "@/hooks/useLotteryData";
 import { Plus, Trash2, Image as ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 
 export default function PrizeManager() {
-  const { prizes, addPrize, deletePrize } = useLottery();
+  const { prizes, addPrize, deletePrize } = useLotteryData();
   const [isOpen, setIsOpen] = useState(false);
   const [newPrize, setNewPrize] = useState({ name: '', count: 1, image: '' });
 
@@ -39,7 +39,7 @@ export default function PrizeManager() {
       return;
     }
 
-    await addPrize(newPrize);
+    await addPrize(newPrize.name, newPrize.count, newPrize.image || undefined);
     setIsOpen(false);
     setNewPrize({ name: '', count: 1, image: '' });
     toast.success('奖品添加成功');
@@ -120,8 +120,8 @@ export default function PrizeManager() {
           <Card key={prize.id} className="bg-black/40 border-pink-500/30 overflow-hidden group relative">
             <CardContent className="p-4 flex gap-4 items-center">
               <div className="w-16 h-16 rounded bg-black/50 flex-shrink-0 overflow-hidden border border-pink-500/20">
-                {prize.image ? (
-                  <img src={prize.image} alt={prize.name} className="w-full h-full object-cover" />
+                {prize.imageUrl ? (
+                  <img src={prize.imageUrl} alt={prize.name} className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
                     <Gift className="h-8 w-8 text-pink-500/30" />
@@ -130,7 +130,7 @@ export default function PrizeManager() {
               </div>
               <div className="flex-1 min-w-0">
                 <h4 className="font-bold text-lg truncate text-pink-100">{prize.name}</h4>
-                <p className="text-sm text-pink-400/70">数量: {prize.count} (剩余: {prize.remaining})</p>
+                <p className="text-sm text-pink-400/70">数量: {prize.totalCount} (剩余: {prize.remainingCount})</p>
               </div>
               <Button
                 variant="ghost"

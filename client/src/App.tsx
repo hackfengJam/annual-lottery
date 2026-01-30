@@ -7,8 +7,8 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import Lottery from "./pages/Lottery";
 import Settings from "./pages/Settings";
 import Layout from "./components/Layout";
-
 function Router() {
+  // make sure to consider if you need authentication for certain routes
   return (
     <Layout>
       <Switch>
