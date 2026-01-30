@@ -12,9 +12,10 @@ export default function Lottery() {
   const { 
     participants, 
     prizes, 
-    draw, 
+    winners,
     isDrawing, 
-    setIsDrawing 
+    setIsDrawing, 
+    draw 
   } = useLottery();
 
   const [selectedPrizeId, setSelectedPrizeId] = useState<string>('');
@@ -207,7 +208,7 @@ export default function Lottery() {
           </h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {/* 使用 winners 数组渲染 */}
-            {useLottery().winners
+            {winners
               .filter(w => w.prizeId === selectedPrizeId)
               .map(winner => (
                 <div key={winner.id} className="bg-black/40 border border-cyan-500/30 p-2 text-center rounded">
