@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useLotteryData } from "@/hooks/useLotteryData";
-import type { Winner } from "../../../drizzle/schema";
+import type { Winner, Participant } from "../../../drizzle/schema";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import confetti from 'canvas-confetti';
@@ -24,7 +24,10 @@ export default function Lottery() {
   const [currentWinners, setCurrentWinners] = useState<Winner[]>([]);
   const [rollingName, setRollingName] = useState<string>('READY');
   
+  // 存储预选的中奖者（在开始抽奖时确定）
+  const preSelectedWinnersRef = useRef<Participant[]>([]);
   const rollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const rollingIndexRef = useRef<number>(0);
 
   // 自动选择第一个有剩余的奖品
   useEffect(() => {
@@ -40,31 +43,61 @@ export default function Lottery() {
   const startRolling = () => {
     if (!selectedPrizeId) return;
     
+    const selectedPrize = prizes.find(p => p.id === selectedPrizeId);
+    if (!selectedPrize) return;
+
     setIsDrawing(true);
     setCurrentWinners([]);
     
-    // 滚动动画逻辑 - 只显示未中奖的参与者
-    const eligibleNames = participants
-      .filter(p => !winnerParticipantIds.has(p.id))
-      .map(p => p.name);
+    // 获取未中奖的参与者
+    const eligibleParticipants = participants.filter(p => !winnerParticipantIds.has(p.id));
       
-    if (eligibleNames.length === 0) {
+    if (eligibleParticipants.length === 0) {
       setIsDrawing(false);
       toast.error('没有可抽奖的参与者');
       return;
     }
 
-    // 播放音效（如果有）
+    // 计算实际抽取数量
+    const count = drawCount === 'ALL' 
+      ? selectedPrize.remainingCount
+      : parseInt(drawCount);
+    const actualCount = Math.min(count, eligibleParticipants.length, selectedPrize.remainingCount);
     
-    // 加速滚动效果
+    // 【关键修复】在开始抽奖时就确定中奖者
+    // 使用密码学安全的随机算法抽取中奖者
+    const shuffled = [...eligibleParticipants].sort(() => {
+      const array = new Uint32Array(1);
+      crypto.getRandomValues(array);
+      return array[0] / 0xFFFFFFFF - 0.5;
+    });
+    
+    preSelectedWinnersRef.current = shuffled.slice(0, actualCount);
+    rollingIndexRef.current = 0;
+
+    // 滚动动画逻辑
+    const allNames = eligibleParticipants.map(p => p.name);
     let speed = 50;
     let lastTime = Date.now();
+    let elapsedTime = 0;
+    const totalDuration = 3000; // 3秒滚动时间
     
     const animate = () => {
       const now = Date.now();
+      elapsedTime += now - lastTime;
+      
       if (now - lastTime > speed) {
-        const randomName = eligibleNames[Math.floor(Math.random() * eligibleNames.length)];
-        setRollingName(randomName);
+        // 在前80%的时间随机显示名字，后20%逐渐减速并显示预选的中奖者
+        if (elapsedTime < totalDuration * 0.8) {
+          const randomName = allNames[Math.floor(Math.random() * allNames.length)];
+          setRollingName(randomName);
+        } else {
+          // 逐渐减速并循环显示预选中奖者的名字
+          speed = Math.min(speed * 1.1, 300); // 逐渐减速
+          const currentWinner = preSelectedWinnersRef.current[rollingIndexRef.current % preSelectedWinnersRef.current.length];
+          setRollingName(currentWinner.name);
+          rollingIndexRef.current++;
+        }
         lastTime = now;
       }
       
@@ -85,29 +118,19 @@ export default function Lottery() {
     const selectedPrize = prizes.find(p => p.id === selectedPrizeId);
     if (!selectedPrize) return;
 
-    const count = drawCount === 'ALL' 
-      ? selectedPrize.remainingCount
-      : parseInt(drawCount);
-      
-    // 获取未中奖的参与者
-    const eligibleParticipants = participants.filter(p => !winnerParticipantIds.has(p.id));
+    // 【关键修复】使用预选的中奖者，而不是重新随机
+    const selectedWinners = preSelectedWinnersRef.current;
     
-    if (eligibleParticipants.length === 0) {
+    if (selectedWinners.length === 0) {
       toast.error('没有可抽奖的参与者');
       setIsDrawing(false);
       return;
     }
 
-    const actualCount = Math.min(count, eligibleParticipants.length, selectedPrize.remainingCount);
-    
-    // 使用密码学安全的随机算法抽取中奖者
-    const shuffled = eligibleParticipants.sort(() => {
-      const array = new Uint32Array(1);
-      crypto.getRandomValues(array);
-      return array[0] / 0xFFFFFFFF - 0.5;
-    });
-    
-    const selectedWinners = shuffled.slice(0, actualCount);
+    // 显示最后一个预选中奖者的名字（作为停止时的最终显示）
+    if (selectedWinners.length === 1) {
+      setRollingName(selectedWinners[0].name);
+    }
     
     // 调用 API 记录中奖
     const newWinners: Winner[] = [];
@@ -139,6 +162,7 @@ export default function Lottery() {
     }
     
     setIsDrawing(false);
+    preSelectedWinnersRef.current = []; // 清空预选中奖者
   };
 
   const toggleDraw = () => {
