@@ -72,7 +72,10 @@ export default function Lottery() {
       rollingIntervalRef.current = null;
     }
 
-    const count = parseInt(drawCount);
+    const count = drawCount === 'ALL' 
+      ? (selectedPrize?.remaining || 1) 
+      : parseInt(drawCount);
+      
     draw(selectedPrizeId, count).then(winners => {
       if (winners) {
         setCurrentWinners(winners);
@@ -117,7 +120,7 @@ export default function Lottery() {
         </Select>
 
         <Select value={drawCount} onValueChange={setDrawCount} disabled={isDrawing}>
-          <SelectTrigger className="w-[180px] h-16 text-2xl bg-black/50 border-2 border-pink-500 text-pink-400 neon-border-pink">
+          <SelectTrigger className="w-[200px] h-16 text-2xl bg-black/50 border-2 border-pink-500 text-pink-400 neon-border-pink">
             <SelectValue placeholder="数量" />
           </SelectTrigger>
           <SelectContent className="bg-black/90 border-pink-500 text-pink-400">
@@ -126,6 +129,9 @@ export default function Lottery() {
                 抽取 {num} 个
               </SelectItem>
             ))}
+            <SelectItem value="ALL" className="text-xl py-3 text-red-400 font-bold">
+              全部抽取 ({selectedPrize?.remaining || 0})
+            </SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -148,19 +154,21 @@ export default function Lottery() {
               {rollingName}
             </motion.div>
           ) : currentWinners.length > 0 ? (
-            <div className="grid grid-cols-2 gap-8 max-w-4xl mx-auto">
-              {currentWinners.map((winner, idx) => (
-                <motion.div
-                  key={winner.id}
-                  initial={{ scale: 0, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  transition={{ delay: idx * 0.1, type: "spring" }}
-                  className="bg-black/60 border border-pink-500 p-6 rounded-lg neon-border-pink"
-                >
-                  <div className="text-4xl font-bold text-pink-400 mb-2">{winner.participantName}</div>
-                  <div className="text-xl text-cyan-300">{winner.participantId.slice(0, 4)}</div>
-                </motion.div>
-              ))}
+            <div className="max-h-[400px] overflow-y-auto pr-4 custom-scrollbar">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-w-5xl mx-auto">
+                {currentWinners.map((winner, idx) => (
+                  <motion.div
+                    key={winner.id}
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ delay: Math.min(idx * 0.05, 1), type: "spring" }}
+                    className="bg-black/60 border border-pink-500 p-4 rounded-lg neon-border-pink flex flex-col items-center justify-center"
+                  >
+                    <div className="text-2xl font-bold text-pink-400 truncate w-full text-center">{winner.participantName}</div>
+                    <div className="text-sm text-cyan-300">{winner.participantId.slice(0, 4)}</div>
+                  </motion.div>
+                ))}
+              </div>
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center space-y-6">
