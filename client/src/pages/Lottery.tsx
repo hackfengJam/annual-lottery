@@ -331,14 +331,13 @@ export default function Lottery() {
         {isDrawing ? "STOP" : "START"}
       </Button>
 
-      {/* 中奖名单展示 */}
-      {selectedPrize && (
+      {/* 当前奖项中奖名单 */}
+      {selectedPrize && winners.filter(w => w.prizeId === selectedPrizeId).length > 0 && (
         <div className="w-full max-w-4xl mt-8">
           <h3 className="text-2xl font-display text-center mb-4 neon-text-pink">
             {selectedPrize.name} 中奖名单
           </h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {/* 使用 winners 数组渲染 */}
             {winners
               .filter(w => w.prizeId === selectedPrizeId)
               .map(winner => (
@@ -346,6 +345,85 @@ export default function Lottery() {
                   <span className="text-cyan-300 font-bold">{winner.participantName}</span>
                 </div>
               ))
+            }
+          </div>
+        </div>
+      )}
+
+      {/* 完整获奖名单公示区域 */}
+      {winners.length > 0 && (
+        <div className="w-full max-w-7xl mt-16 mb-8">
+          <div className="text-center mb-8">
+            <h2 className="text-5xl font-display font-bold neon-text-pink mb-2">获奖名单公示</h2>
+            <p className="text-cyan-400 text-xl">恭喜以下幸运儿获得奖品！</p>
+          </div>
+          
+          <div className="space-y-8">
+            {prizes
+              .filter(prize => winners.some(w => w.prizeId === prize.id))
+              .map(prize => {
+                const prizeWinners = winners.filter(w => w.prizeId === prize.id);
+                return (
+                  <motion.div
+                    key={prize.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5 }}
+                    className="bg-black/60 border-2 border-cyan-500/50 rounded-xl p-6 neon-border-blue"
+                  >
+                    <div className="flex flex-col md:flex-row gap-6">
+                      {/* 奖品信息 */}
+                      <div className="flex-shrink-0">
+                        {prize.imageUrl ? (
+                          <div className="w-32 h-32 rounded-lg overflow-hidden border-2 border-pink-500 neon-border-pink bg-black/50">
+                            <img 
+                              src={prize.imageUrl} 
+                              alt={prize.name} 
+                              className="w-full h-full object-contain p-2"
+                            />
+                          </div>
+                        ) : (
+                          <div className="w-32 h-32 rounded-lg border-2 border-pink-500 neon-border-pink bg-black/50 flex items-center justify-center">
+                            <span className="text-4xl">🎁</span>
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* 奖品名称和中奖者 */}
+                      <div className="flex-1">
+                        <div className="flex items-center gap-4 mb-4">
+                          <h3 className="text-3xl font-display font-bold text-pink-400 neon-text-pink">
+                            {prize.name}
+                          </h3>
+                          <span className="text-cyan-400 text-xl">
+                            共 {prizeWinners.length} 人中奖
+                          </span>
+                        </div>
+                        
+                        {/* 中奖者列表 */}
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                          {prizeWinners.map((winner, idx) => (
+                            <motion.div
+                              key={winner.id}
+                              initial={{ scale: 0, opacity: 0 }}
+                              animate={{ scale: 1, opacity: 1 }}
+                              transition={{ delay: idx * 0.02, type: "spring" }}
+                              className="bg-gradient-to-br from-cyan-900/30 to-pink-900/30 border border-cyan-400/50 rounded-lg p-3 text-center hover:border-pink-400 transition-colors"
+                            >
+                              <div className="text-lg font-bold text-white truncate">
+                                {winner.participantName}
+                              </div>
+                              <div className="text-xs text-cyan-300 mt-1">
+                                #{winner.participantId}
+                              </div>
+                            </motion.div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })
             }
           </div>
         </div>
