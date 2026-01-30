@@ -294,23 +294,53 @@ export default function Lottery() {
               </div>
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center space-y-6">
-              {selectedPrize?.imageUrl && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="relative w-64 h-64 rounded-lg overflow-hidden border-2 border-cyan-500 neon-border-blue bg-black/50"
-                >
-                  <img 
-                    src={selectedPrize.imageUrl} 
-                    alt={selectedPrize.name} 
-                    className="w-full h-full object-contain p-4"
-                  />
-                </motion.div>
+            <div className="flex flex-col items-center justify-center space-y-8">
+              {selectedPrize ? (
+                <>
+                  {/* 奖品图片 */}
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.5, type: "spring" }}
+                    className="relative w-80 h-80 rounded-xl overflow-hidden border-4 border-cyan-500 neon-border-blue bg-black/50 shadow-2xl"
+                  >
+                    {selectedPrize.imageUrl ? (
+                      <img 
+                        src={selectedPrize.imageUrl} 
+                        alt={selectedPrize.name} 
+                        className="w-full h-full object-contain p-6"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <span className="text-9xl">🎁</span>
+                      </div>
+                    )}
+                  </motion.div>
+                  
+                  {/* 奖品名称 */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
+                    className="text-center space-y-2"
+                  >
+                    <div className="text-5xl font-display font-bold text-pink-400 neon-text-pink">
+                      {selectedPrize.name}
+                    </div>
+                    <div className="text-2xl text-cyan-400">
+                      剩余数量: {selectedPrize.remainingCount}
+                    </div>
+                  </motion.div>
+                  
+                  <div className="text-4xl font-display text-white/70 tracking-widest animate-pulse">
+                    点击 START 开始抽奖
+                  </div>
+                </>
+              ) : (
+                <div className="text-6xl font-display text-white/50 tracking-widest">
+                  请选择奖项
+                </div>
               )}
-              <div className="text-6xl font-display text-white/50 tracking-widest">
-                {selectedPrize ? '等待抽奖' : '请选择奖项'}
-              </div>
             </div>
           )}
         </div>
