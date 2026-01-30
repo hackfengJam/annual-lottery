@@ -1,18 +1,18 @@
 import { useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
 import { useLottery } from "@/hooks/useLottery";
-import { parseCSV } from "@/lib/utils";
 import { toast } from "sonner";
-import { Trash2, Upload, Save } from "lucide-react";
+import { Upload, Trash2, Save, RefreshCw } from "lucide-react";
+import { parseCSV } from "@/lib/utils";
+import PrizeManager from "@/components/PrizeManager";
 
 export default function Settings() {
   const { 
     participants, 
-    prizes, 
     importParticipants, 
     importPrizes, 
     resetLottery 
@@ -152,31 +152,38 @@ export default function Settings() {
         </Card>
 
         {/* 奖品设置 */}
-        <Card className="glass-panel neon-border-pink">
+        <Card className="bg-black/40 border-pink-500/30 neon-border-pink">
           <CardHeader>
-            <CardTitle className="text-primary neon-text-pink">奖品管理 ({prizes.length}项)</CardTitle>
+            <CardTitle className="text-2xl font-display text-pink-400">奖品设置</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label>批量导入 (CSV)</Label>
-              <div className="flex gap-2">
-                <Input type="file" accept=".csv" onChange={handlePrizeUpload} className="bg-black/30" />
-              </div>
-              <p className="text-xs text-muted-foreground">格式: 奖品名称, 数量</p>
-            </div>
+          <CardContent className="space-y-8">
+            <PrizeManager />
             
-            <div className="space-y-2">
-              <Label>手动输入</Label>
-              <Textarea 
-                placeholder="每行一个: 奖品名称 数量 [图片链接]" 
-                value={prizeInput}
-                onChange={e => setPrizeInput(e.target.value)}
-                className="bg-black/30 min-h-[150px]"
-              />
-              <p className="text-xs text-muted-foreground">示例: iPhone 15 1 https://example.com/iphone.jpg</p>
-              <Button onClick={handleManualPrizeImport} className="w-full bg-primary text-primary-foreground hover:bg-primary/80">
-                <Save className="mr-2 h-4 w-4" /> 添加奖品
-              </Button>
+            <div className="border-t border-pink-500/30 pt-6">
+              <h4 className="text-lg font-semibold mb-4 text-pink-300">批量导入</h4>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>CSV 文件导入</Label>
+                  <div className="flex gap-2">
+                    <Input type="file" accept=".csv" onChange={handlePrizeUpload} className="bg-black/30" />
+                  </div>
+                  <p className="text-xs text-muted-foreground">格式: 奖品名称, 数量</p>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label>文本批量导入</Label>
+                  <Textarea 
+                    placeholder="每行一个: 奖品名称 数量 [图片链接]" 
+                    value={prizeInput}
+                    onChange={e => setPrizeInput(e.target.value)}
+                    className="bg-black/30 min-h-[100px]"
+                  />
+                  <p className="text-xs text-muted-foreground">示例: iPhone 15 1 https://example.com/iphone.jpg</p>
+                  <Button onClick={handleManualPrizeImport} variant="outline" className="w-full border-pink-500/50 hover:bg-pink-950/30">
+                    <Save className="mr-2 h-4 w-4" /> 批量添加
+                  </Button>
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>

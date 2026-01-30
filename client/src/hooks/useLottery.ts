@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Participant, Prize, Winner } from '@/lib/types';
 import { nanoid } from 'nanoid';
+import { db } from '@/lib/db';
 
 // 使用加密安全的随机数生成器
 const secureRandom = (max: number) => {
@@ -10,47 +11,51 @@ const secureRandom = (max: number) => {
 };
 
 export function useLottery() {
-  const [participants, setParticipants] = useState<Participant[]>(() => {
-    const saved = localStorage.getItem('lottery_participants');
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [prizes, setPrizes] = useState<Prize[]>(() => {
-    const saved = localStorage.getItem('lottery_prizes');
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [winners, setWinners] = useState<Winner[]>(() => {
-    const saved = localStorage.getItem('lottery_winners');
-    return saved ? JSON.parse(saved) : [];
-  });
-
+  const [participants, setParticipants] = useState<Participant[]>([]);
+  const [prizes, setPrizes] = useState<Prize[]>([]);
+  const [winners, setWinners] = useState<Winner[]>([]);
   const [isDrawing, setIsDrawing] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // 持久化数据
+  // 初始化加载数据
   useEffect(() => {
-    localStorage.setItem('lottery_participants', JSON.stringify(participants));
-  }, [participants]);
+    const loadData = async () => {
+      try {
+        const [loadedParticipants, loadedPrizes, loadedWinners] = await Promise.all([
+          db.getAllParticipants(),
+          db.getAllPrizes(),
+          db.getAllWinners()
+        ]);
+        
+        setParticipants(loadedParticipants);
+        setPrizes(loadedPrizes);
+        setWinners(loadedWinners);
+      } catch (error) {
+        console.error('Failed to load data from DB:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadData();
+  }, []);
 
-  useEffect(() => {
-    localStorage.setItem('lottery_prizes', JSON.stringify(prizes));
-  }, [prizes]);
-
-  useEffect(() => {
-    localStorage.setItem('lottery_winners', JSON.stringify(winners));
-  }, [winners]);
-
-  const importParticipants = useCallback((data: { name: string; department?: string }[]) => {
+  const importParticipants = useCallback(async (data: { name: string; department?: string }[]) => {
     const newParticipants = data.map(p => ({
       id: nanoid(),
       name: p.name,
       department: p.department,
       isWinner: false
     }));
+    
+    // 批量保存到 DB
+    for (const p of newParticipants) {
+      await db.addParticipant(p);
+    }
+    
     setParticipants(prev => [...prev, ...newParticipants]);
   }, []);
 
-  const importPrizes = useCallback((data: { name: string; count: number; image?: string }[]) => {
+  const importPrizes = useCallback(async (data: { name: string; count: number; image?: string }[]) => {
     const newPrizes = data.map(p => ({
       id: nanoid(),
       name: p.name,
@@ -58,18 +63,55 @@ export function useLottery() {
       remaining: p.count,
       image: p.image
     }));
+    
+    // 批量保存到 DB
+    for (const p of newPrizes) {
+      await db.addPrize(p);
+    }
+    
     setPrizes(prev => [...prev, ...newPrizes]);
   }, []);
 
-  const resetLottery = useCallback(() => {
-    if (confirm('确定要重置所有抽奖数据吗？这将清空所有中奖记录。')) {
-      setWinners([]);
-      setParticipants(prev => prev.map(p => ({ ...p, isWinner: false })));
-      setPrizes(prev => prev.map(p => ({ ...p, remaining: p.count })));
-    }
+  const addPrize = useCallback(async (prize: Omit<Prize, 'id' | 'remaining'>) => {
+    const newPrize: Prize = {
+      ...prize,
+      id: nanoid(),
+      remaining: prize.count
+    };
+    await db.addPrize(newPrize);
+    setPrizes(prev => [...prev, newPrize]);
   }, []);
 
-  const draw = useCallback((prizeId: string, count: number = 1) => {
+  const deletePrize = useCallback(async (id: string) => {
+    await db.deletePrize(id);
+    setPrizes(prev => prev.filter(p => p.id !== id));
+  }, []);
+
+  const resetLottery = useCallback(async () => {
+    if (confirm('确定要重置所有抽奖数据吗？这将清空所有中奖记录。')) {
+      await db.clearWinners();
+      
+      // 重置参与者状态
+      const updatedParticipants = participants.map(p => ({ ...p, isWinner: false }));
+      await db.clearParticipants();
+      for (const p of updatedParticipants) {
+        await db.addParticipant(p);
+      }
+      
+      // 重置奖品剩余数量
+      const updatedPrizes = prizes.map(p => ({ ...p, remaining: p.count }));
+      await db.clearPrizes();
+      for (const p of updatedPrizes) {
+        await db.addPrize(p);
+      }
+
+      setWinners([]);
+      setParticipants(updatedParticipants);
+      setPrizes(updatedPrizes);
+    }
+  }, [participants, prizes]);
+
+  const draw = useCallback(async (prizeId: string, count: number = 1) => {
     const prize = prizes.find(p => p.id === prizeId);
     if (!prize || prize.remaining <= 0) return null;
 
@@ -81,7 +123,6 @@ export function useLottery() {
     const winningParticipantIds = new Set<string>();
 
     for (let i = 0; i < drawCount; i++) {
-      // 每次抽取前重新计算剩余的合格参与者（排除本轮已中奖的）
       const currentPool = eligibleParticipants.filter(p => !winningParticipantIds.has(p.id));
       if (currentPool.length === 0) break;
 
@@ -99,14 +140,32 @@ export function useLottery() {
       });
     }
 
+    // 更新 DB
+    for (const winner of newWinners) {
+      await db.addWinner(winner);
+    }
+    
+    const updatedParticipants = participants.map(p => 
+      winningParticipantIds.has(p.id) ? { ...p, isWinner: true } : p
+    );
+    for (const p of updatedParticipants) {
+      if (winningParticipantIds.has(p.id)) {
+        await db.addParticipant(p);
+      }
+    }
+
+    const updatedPrizes = prizes.map(p => 
+      p.id === prizeId ? { ...p, remaining: p.remaining - newWinners.length } : p
+    );
+    const updatedPrize = updatedPrizes.find(p => p.id === prizeId);
+    if (updatedPrize) {
+      await db.addPrize(updatedPrize);
+    }
+
     // 更新状态
     setWinners(prev => [...prev, ...newWinners]);
-    setParticipants(prev => prev.map(p => 
-      winningParticipantIds.has(p.id) ? { ...p, isWinner: true } : p
-    ));
-    setPrizes(prev => prev.map(p => 
-      p.id === prizeId ? { ...p, remaining: p.remaining - newWinners.length } : p
-    ));
+    setParticipants(updatedParticipants);
+    setPrizes(updatedPrizes);
 
     return newWinners;
   }, [participants, prizes]);
@@ -116,9 +175,12 @@ export function useLottery() {
     prizes,
     winners,
     isDrawing,
+    isLoading,
     setIsDrawing,
     importParticipants,
     importPrizes,
+    addPrize,
+    deletePrize,
     resetLottery,
     draw
   };

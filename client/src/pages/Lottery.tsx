@@ -72,20 +72,19 @@ export default function Lottery() {
     }
 
     const count = parseInt(drawCount);
-    const winners = draw(selectedPrizeId, count);
-    
-    if (winners) {
-      setCurrentWinners(winners);
-      // 触发庆祝特效
-      confetti({
-        particleCount: 150,
-        spread: 70,
-        origin: { y: 0.6 },
-        colors: ['#FF00FF', '#00FFFF', '#BF00FF']
-      });
-    }
-    
-    setIsDrawing(false);
+    draw(selectedPrizeId, count).then(winners => {
+      if (winners) {
+        setCurrentWinners(winners);
+        // 触发庆祝特效
+        confetti({
+          particleCount: 150,
+          spread: 70,
+          origin: { y: 0.6 },
+          colors: ['#FF00FF', '#00FFFF', '#BF00FF']
+        });
+      }
+      setIsDrawing(false);
+    });
   };
 
   const toggleDraw = () => {
