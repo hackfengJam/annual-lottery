@@ -23,11 +23,14 @@ export default function Lottery() {
   const [drawCount, setDrawCount] = useState<string>('1');
   const [currentWinners, setCurrentWinners] = useState<Winner[]>([]);
   const [rollingName, setRollingName] = useState<string>('READY');
+  const [countdown, setCountdown] = useState<number>(10); // 倒计时秒数
   
   // 存储预选的中奖者（在开始抽奖时确定）
   const preSelectedWinnersRef = useRef<Participant[]>([]);
   const rollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const rollingIndexRef = useRef<number>(0);
+  const countdownTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const autoStopTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // 自动选择第一个有剩余的奖品
   useEffect(() => {
@@ -48,6 +51,7 @@ export default function Lottery() {
 
     setIsDrawing(true);
     setCurrentWinners([]);
+    setCountdown(10); // 重置倒计时为10秒
     
     // 获取未中奖的参与者
     const eligibleParticipants = participants.filter(p => !winnerParticipantIds.has(p.id));
@@ -80,7 +84,7 @@ export default function Lottery() {
     const startTime = Date.now();
     let lastUpdateTime = startTime;
     let speed = 50;
-    const totalDuration = 3000; // 3秒滚动时间
+    const totalDuration = 10000; // 10秒滚动时间（与倒计时同步）
     
     const animate = () => {
       const now = Date.now();
@@ -108,12 +112,40 @@ export default function Lottery() {
     };
     
     rollingIntervalRef.current = requestAnimationFrame(animate) as any;
+
+    // 启动倒计时
+    let remainingTime = 10;
+    countdownTimerRef.current = setInterval(() => {
+      remainingTime--;
+      setCountdown(remainingTime);
+      
+      if (remainingTime <= 0) {
+        if (countdownTimerRef.current) {
+          clearInterval(countdownTimerRef.current);
+          countdownTimerRef.current = null;
+        }
+      }
+    }, 1000);
+
+    // 10秒后自动停止
+    autoStopTimeoutRef.current = setTimeout(() => {
+      stopRolling();
+    }, 10000);
   };
 
   const stopRolling = async () => {
+    // 清理所有定时器
     if (rollingIntervalRef.current) {
       cancelAnimationFrame(rollingIntervalRef.current as any);
       rollingIntervalRef.current = null;
+    }
+    if (countdownTimerRef.current) {
+      clearInterval(countdownTimerRef.current);
+      countdownTimerRef.current = null;
+    }
+    if (autoStopTimeoutRef.current) {
+      clearTimeout(autoStopTimeoutRef.current);
+      autoStopTimeoutRef.current = null;
     }
 
     if (!selectedPrizeId) return;
@@ -166,6 +198,7 @@ export default function Lottery() {
     
     setIsDrawing(false);
     preSelectedWinnersRef.current = []; // 清空预选中奖者
+    setCountdown(10); // 重置倒计时显示
   };
 
   const toggleDraw = () => {
@@ -219,6 +252,19 @@ export default function Lottery() {
         <div className="absolute inset-0 pointer-events-none">
           <img src="/images/cyberpunk-card-border.png" alt="" className="w-full h-full object-fill opacity-80" />
         </div>
+
+        {/* 倒计时显示 */}
+        {isDrawing && (
+          <div className="absolute top-4 right-4 z-20">
+            <motion.div 
+              className="text-6xl font-display font-bold text-yellow-400 neon-text-yellow"
+              animate={{ scale: [1, 1.2, 1] }}
+              transition={{ duration: 1, repeat: Infinity }}
+            >
+              {countdown}s
+            </motion.div>
+          </div>
+        )}
 
         {/* 滚动/结果显示 */}
         <div className="relative z-10 text-center space-y-8 w-full px-8">

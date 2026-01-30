@@ -191,6 +191,10 @@
     text-shadow: 0 0 5px var(--color-neon-blue), 0 0 10px var(--color-neon-blue);
   }
   
+  .neon-text-yellow {
+    text-shadow: 0 0 5px #FFD700, 0 0 10px #FFD700, 0 0 20px #FFD700;
+  }
+  
   .neon-border-pink {
     box-shadow: 0 0 5px var(--color-neon-pink), inset 0 0 5px var(--color-neon-pink);
     border-color: var(--color-neon-pink);
