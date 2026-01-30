@@ -77,16 +77,17 @@ export default function Lottery() {
 
     // 滚动动画逻辑
     const allNames = eligibleParticipants.map(p => p.name);
+    const startTime = Date.now();
+    let lastUpdateTime = startTime;
     let speed = 50;
-    let lastTime = Date.now();
-    let elapsedTime = 0;
     const totalDuration = 3000; // 3秒滚动时间
     
     const animate = () => {
       const now = Date.now();
-      elapsedTime += now - lastTime;
+      const elapsedTime = now - startTime;
+      const timeSinceLastUpdate = now - lastUpdateTime;
       
-      if (now - lastTime > speed) {
+      if (timeSinceLastUpdate > speed) {
         // 在前80%的时间随机显示名字，后20%逐渐减速并显示预选的中奖者
         if (elapsedTime < totalDuration * 0.8) {
           const randomName = allNames[Math.floor(Math.random() * allNames.length)];
@@ -94,11 +95,13 @@ export default function Lottery() {
         } else {
           // 逐渐减速并循环显示预选中奖者的名字
           speed = Math.min(speed * 1.1, 300); // 逐渐减速
-          const currentWinner = preSelectedWinnersRef.current[rollingIndexRef.current % preSelectedWinnersRef.current.length];
-          setRollingName(currentWinner.name);
-          rollingIndexRef.current++;
+          if (preSelectedWinnersRef.current.length > 0) {
+            const currentWinner = preSelectedWinnersRef.current[rollingIndexRef.current % preSelectedWinnersRef.current.length];
+            setRollingName(currentWinner.name);
+            rollingIndexRef.current++;
+          }
         }
-        lastTime = now;
+        lastUpdateTime = now;
       }
       
       rollingIntervalRef.current = requestAnimationFrame(animate) as any;
