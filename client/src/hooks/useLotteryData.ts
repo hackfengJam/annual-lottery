@@ -32,6 +32,12 @@ export function useLotteryData() {
     },
   });
   
+  const createPrizesBatchMutation = trpc.prize.createBatch.useMutation({
+    onSuccess: () => {
+      utils.prize.list.invalidate();
+    },
+  });
+  
   // 参与者操作
   const createParticipantMutation = trpc.participant.create.useMutation({
     onSuccess: () => {
@@ -100,6 +106,10 @@ export function useLotteryData() {
     return await createParticipantsBatchMutation.mutateAsync({ names });
   }, [createParticipantsBatchMutation]);
   
+  const addPrizesBatch = useCallback(async (prizes: Array<{name: string, count: number}>) => {
+    return await createPrizesBatchMutation.mutateAsync({ prizes });
+  }, [createPrizesBatchMutation]);
+  
   const draw = useCallback(async (prizeId: number, prizeName: string, participantId: number, participantName: string) => {
     return await createWinnerMutation.mutateAsync({
       prizeId,
@@ -132,6 +142,7 @@ export function useLotteryData() {
     
     // 奖品操作
     addPrize,
+    addPrizesBatch,
     updatePrize: updatePrizeMutation.mutateAsync,
     deletePrize: (id: number) => deletePrizeMutation.mutateAsync({ id }),
     

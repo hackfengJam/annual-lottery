@@ -98,6 +98,57 @@ export const appRouter = router({
         await db.deletePrize(input.id, ctx.user.id);
         return { success: true };
       }),
+    
+    createBatch: protectedProcedure
+      .input(z.object({
+        prizes: z.array(z.object({
+          name: z.string().min(1),
+          count: z.number().int().positive(),
+        }))
+      }))
+      .mutation(async ({ ctx, input }) => {
+        // 获取现有奖品名单
+        const existingPrizes = await db.getPrizesByUserId(ctx.user.id);
+        const existingNames = new Set(existingPrizes.map(p => p.name.trim()));
+        
+        // 去重：移除已存在的名称
+        const uniquePrizes: Array<{name: string, count: number}> = [];
+        const seenNames = new Set<string>();
+        
+        for (const prize of input.prizes) {
+          const trimmedName = prize.name.trim();
+          if (trimmedName && !existingNames.has(trimmedName) && !seenNames.has(trimmedName)) {
+            uniquePrizes.push({ name: trimmedName, count: prize.count });
+            seenNames.add(trimmedName);
+          }
+        }
+        
+        if (uniquePrizes.length === 0) {
+          return {
+            success: true,
+            count: 0,
+            skipped: input.prizes.length,
+            message: '所有奖品已存在，未添加新数据'
+          };
+        }
+        
+        // 批量创建奖品
+        for (const prize of uniquePrizes) {
+          await db.createPrize({
+            name: prize.name,
+            totalCount: prize.count,
+            remainingCount: prize.count,
+            userId: ctx.user.id,
+          });
+        }
+        
+        return {
+          success: true,
+          count: uniquePrizes.length,
+          skipped: input.prizes.length - uniquePrizes.length,
+          message: `成功添加 ${uniquePrizes.length} 个奖品${input.prizes.length - uniquePrizes.length > 0 ? `，跳过 ${input.prizes.length - uniquePrizes.length} 个重复项` : ''}`
+        };
+      }),
   }),
 
   // 参与者相关路由
@@ -118,12 +169,38 @@ export const appRouter = router({
     createBatch: protectedProcedure
       .input(z.object({ names: z.array(z.string().min(1)) }))
       .mutation(async ({ ctx, input }) => {
-        const participants = input.names.map(name => ({
+        // 获取现有参与者名单
+        const existingParticipants = await db.getParticipantsByUserId(ctx.user.id);
+        const existingNames = new Set(existingParticipants.map(p => p.name.trim()));
+        
+        // 去重：移除已存在的名称和输入中的重复名称
+        const trimmedNames = input.names.map(n => n.trim());
+        const uniqueNamesSet = new Set(trimmedNames);
+        const uniqueNames = Array.from(uniqueNamesSet)
+          .filter(name => name && !existingNames.has(name));
+        
+        if (uniqueNames.length === 0) {
+          return { 
+            success: true, 
+            count: 0, 
+            skipped: input.names.length,
+            message: '所有参与者已存在，未添加新数据'
+          };
+        }
+        
+        const participants = uniqueNames.map(name => ({
           name,
           userId: ctx.user.id,
         }));
+        
         await db.createParticipantsBatch(participants);
-        return { success: true, count: participants.length };
+        
+        return { 
+          success: true, 
+          count: uniqueNames.length,
+          skipped: input.names.length - uniqueNames.length,
+          message: `成功添加 ${uniqueNames.length} 名参与者${input.names.length - uniqueNames.length > 0 ? `，跳过 ${input.names.length - uniqueNames.length} 个重复项` : ''}`
+        };
       }),
     
     delete: protectedProcedure

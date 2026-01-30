@@ -14,7 +14,8 @@ import PrizeManager from "@/components/PrizeManager";
 export default function Settings() {
   const { 
     participants, 
-    addParticipants, 
+    addParticipants,
+    addPrizesBatch,
     resetLottery,
     clearAll
   } = useLotteryData();
@@ -46,8 +47,12 @@ export default function Settings() {
         const validData = data.filter(d => d.name).map(d => d.name);
         
         if (validData.length > 0) {
-          await addParticipants(validData);
-          toast.success(`成功导入 ${validData.length} 名参与者`);
+          try {
+            const result = await addParticipants(validData);
+            toast.success(result.message || `成功导入 ${result.count} 名参与者`);
+          } catch (error) {
+            toast.error('导入失败');
+          }
         } else {
           toast.error('未找到有效数据，请检查 CSV 格式');
         }
@@ -67,8 +72,22 @@ export default function Settings() {
       try {
         const content = event.target?.result as string;
         const data = parseCSV(content);
-        // CSV 导入奖品功能已被 PrizeManager 取代
-        toast.info('请使用上方的奖品管理器添加奖品');
+        // 假设 CSV 包含 name, count 列
+        const validData = data.filter(d => d.name && d.count).map(d => ({
+          name: d.name,
+          count: parseInt(d.count) || 1,
+        }));
+        
+        if (validData.length > 0) {
+          try {
+            const result = await addPrizesBatch(validData);
+            toast.success(result.message || `成功导入 ${result.count} 个奖品`);
+          } catch (error) {
+            toast.error('导入失败');
+          }
+        } else {
+          toast.error('未找到有效数据，请检查 CSV 格式');
+        }
       } catch (error) {
         toast.error('文件解析失败');
       }
@@ -81,16 +100,40 @@ export default function Settings() {
     const names = lines.map(line => line.split(/[,，\s]+/)[0].trim()).filter(n => n);
 
     if (names.length > 0) {
-      await addParticipants(names);
-      setParticipantInput('');
-      toast.success(`成功添加 ${names.length} 名参与者`);
+      try {
+        const result = await addParticipants(names);
+        setParticipantInput('');
+        toast.success(result.message || `成功添加 ${result.count} 名参与者`);
+      } catch (error) {
+        toast.error('添加参与者失败');
+      }
+    } else {
+      toast.error('请输入有效的参与者数据');
     }
   };
 
-  const handleManualPrizeImport = () => {
-    // 文本批量导入已经被 PrizeManager 组件取代
-    // 保留此函数以防止报错，但实际上不再使用
-    toast.info('请使用上方的奖品管理器添加奖品');
+  const handleManualPrizeImport = async () => {
+    const lines = prizeInput.split('\n').filter(l => l.trim());
+    const prizes = lines.map(line => {
+      // 支持格式: 名称 数量
+      const parts = line.trim().split(/\s+/);
+      const name = parts[0];
+      const count = parseInt(parts[1]) || 1;
+      
+      return { name, count };
+    }).filter(p => p.name);
+
+    if (prizes.length > 0) {
+      try {
+        const result = await addPrizesBatch(prizes);
+        setPrizeInput('');
+        toast.success(result.message || `成功添加 ${result.count} 个奖品`);
+      } catch (error) {
+        toast.error('批量添加奖品失败');
+      }
+    } else {
+      toast.error('请输入有效的奖品数据');
+    }
   };
 
   return (
